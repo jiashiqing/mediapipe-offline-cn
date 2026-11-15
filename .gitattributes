@@ -1,8 +1,9 @@
 # 默认按文本处理，统一 LF
 * text=auto eol=lf
 
-# Windows 批处理必须 CRLF，否则 cmd 解析异常
-*.bat text eol=crlf
+# Windows 批处理：按二进制原样存储，blob 里就是 CRLF。
+# 不用 `text eol=crlf` —— 那会让仓库内存成 LF，从网页单独下载单文件就丢了 CRLF。
+*.bat -text
 
 # 模型与 wasm 是二进制，禁止任何换行转换（转换会直接损坏文件）
 *.wasm binary
