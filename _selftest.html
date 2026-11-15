@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>selftest</title>
+<style>
+  html,body{margin:0;background:#000;color:#7dffb0;font:14px/1.5 Consolas,monospace}
+  pre{position:fixed;left:0;top:0;right:0;max-height:100vh;overflow:hidden;margin:0;padding:10px;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<pre id="log">BOOT</pre>
+<div id="out" style="display:none">WAIT</div>
+<script type="module">
+const logEl = document.getElementById('log');
+const out = document.getElementById('out');
+const lines = [];
+function log(s) { lines.push(s); logEl.textContent = lines.join('\n'); }
+
+async function create(build, delegate) {
+  return await build(delegate);
+}
+
+(async () => {
+  let MP;
+  try {
+    MP = await import('./vendor/vision_bundle.js');
+    log('1 import OK');
+  } catch (e) { log('1 import FAIL ' + e.message); out.textContent = 'FAIL import'; return; }
+
+  let vision;
+  try {
+    vision = await MP.FilesetResolver.forVisionTasks('./vendor/wasm');
+    log('2 wasm OK');
+  } catch (e) { log('2 wasm FAIL ' + e.message); out.textContent = 'FAIL wasm'; return; }
+
+  // 造一张测试图，避免依赖摄像头
+  const cv = document.createElement('canvas');
+  cv.width = 640; cv.height = 480;
+  const c = cv.getContext('2d');
+  const g = c.createLinearGradient(0, 0, 640, 480);
+  g.addColorStop(0, '#1b3a5c'); g.addColorStop(1, '#8a4b2a');
+  c.fillStyle = g; c.fillRect(0, 0, 640, 480);
+  c.fillStyle = '#e8d8b0';
+  c.beginPath(); c.arc(320, 210, 90, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#333'; c.font = 'bold 40px sans-serif';
+  c.fillText('TEST', 250, 400);
+
+  const specs = [
+    ['face', (d) => MP.FaceLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: './models/face_landmarker.task', delegate: d },
+      runningMode: 'IMAGE', numFaces: 1, outputFaceBlendshapes: true })],
+    ['hands', (d) => MP.HandLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: './models/hand_landmarker.task', delegate: d },
+      runningMode: 'IMAGE', numHands: 2 })],
+    ['pose', (d) => MP.PoseLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: './models/pose_landmarker_lite.task', delegate: d },
+      runningMode: 'IMAGE', numPoses: 1 })],
+    ['gesture', (d) => MP.GestureRecognizer.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: './models/gesture_recognizer.task', delegate: d },
+      runningMode: 'IMAGE', numHands: 2 })],
+    ['object', (d) => MP.ObjectDetector.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: './models/efficientdet_lite0.tflite', delegate: d },
+      runningMode: 'IMAGE', scoreThreshold: 0.3 })],
+    ['segment', (d) => MP.ImageSegmenter.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: './models/selfie_segmenter.tflite', delegate: d },
+      runningMode: 'IMAGE', outputCategoryMask: true, outputConfidenceMasks: false })],
+  ];
+
+  let fail = 0;
+  let i = 0;
+  for (const [name, build] of specs) {
+    i++;
+    let task = null, used = '';
+    for (const d of ['GPU', 'CPU']) {
+      try { task = await create(build, d); used = d; break; }
+      catch (e) { log(`  ${name} ${d} 失败: ${e.message || e}`); }
+    }
+    if (!task) { log(`${2 + i} ${name} FAIL 创建`); fail++; continue; }
+
+    // 真跑一次推理
+    try {
+      let res;
+      if (name === 'segment') res = task.segment(cv);
+      else if (name === 'gesture') res = task.recognize(cv);
+      else if (name === 'object') res = task.detect(cv);
+      else res = task.detect(cv);
+      const keys = Object.keys(res || {}).filter(k => res[k] != null).join(',');
+      log(`${2 + i} ${name} OK [${used}] 输出:${keys || '无'}`);
+    } catch (e) {
+      log(`${2 + i} ${name} FAIL 推理 ${e.message || e}`);
+      fail++;
+    }
+    try { task.close && task.close(); } catch (e) {}
+  }
+
+  const verdict = fail === 0 ? 'ALL PASS' : `FAIL ${fail}`;
+  log('=== ' + verdict + ' ===');
+  out.textContent = verdict;
+  document.title = verdict;
+
+  try {
+    await fetch('/__selftest', { method: 'POST', body: lines.join('\n') + '\nVERDICT: ' + verdict });
+  } catch (e) { log('回报失败 ' + e.message); }
+})();
+</script>
+</body>
+</html>

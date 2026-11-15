@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediaPipe 视觉实验室 · 离线版</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%232dd4bf'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <h1>MediaPipe 视觉实验室</h1>
+    <span class="tag">离线运行</span>
+  </div>
+  <div class="actions">
+    <select id="cameraSelect" title="选择摄像头"></select>
+    <button id="startBtn" class="primary">开启摄像头</button>
+    <label class="switch" title="水平镜像画面">
+      <input type="checkbox" id="mirrorChk" checked><span>镜像</span>
+    </label>
+    <button id="snapBtn" disabled title="保存当前画面为 PNG">截图</button>
+    <span id="status" class="status">待启动</span>
+  </div>
+</header>
+
+<nav class="modes" id="modeBar">
+  <button class="mode-btn active" data-mode="face">
+    <span class="cn">面部网格</span><span class="en">Face Mesh</span>
+  </button>
+  <button class="mode-btn" data-mode="hands">
+    <span class="cn">手部追踪</span><span class="en">Hands</span>
+  </button>
+  <button class="mode-btn" data-mode="pose">
+    <span class="cn">姿态检测</span><span class="en">Pose</span>
+  </button>
+  <button class="mode-btn" data-mode="gesture">
+    <span class="cn">手势识别</span><span class="en">Gesture</span>
+  </button>
+  <button class="mode-btn" data-mode="object">
+    <span class="cn">物体检测</span><span class="en">Object</span>
+  </button>
+  <button class="mode-btn" data-mode="segment">
+    <span class="cn">人像去背</span><span class="en">Segment</span>
+  </button>
+  <button class="mode-btn" data-mode="raise">
+    <span class="cn">举手计数</span><span class="en">Raise</span>
+  </button>
+  <button class="mode-btn" data-mode="posture">
+    <span class="cn">坐姿检测</span><span class="en">Posture</span>
+  </button>
+</nav>
+
+<main class="stage">
+  <div class="viewport">
+    <video id="video" playsinline muted autoplay></video>
+    <canvas id="canvas" width="960" height="540"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="big">点击右上角「开启摄像头」</div>
+      <div>画面只在本机处理，不会上传任何数据</div>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <h2 id="panelTitle">面部网格</h2>
+    <p class="desc" id="panelDesc">加载中…</p>
+    <div class="divider"></div>
+    <div class="stats" id="stats">
+      <div class="empty">等待摄像头启动…</div>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
